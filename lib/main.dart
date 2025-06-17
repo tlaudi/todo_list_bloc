@@ -4,16 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:json_annotation/json_annotation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:todo_list/server.dart';
 
 part "main.g.dart";
 
 void main() {
+  startServer([]); // Start the server in the background
   Bloc.observer = LoggingBlocObserver();
   runApp(BlocProvider(create: (_) => TaskListBloc(), child: MainApp()));
 }
 
 class TaskListDataProvider {
-
   static const rootUrl = "http://localhost:8000";
   final getUrl = Uri.parse("$rootUrl/todos");
   final updateUrl = Uri.parse("$rootUrl/todos/update");
@@ -35,11 +36,9 @@ class TaskListDataProvider {
     );
     return response.statusCode == 200;
   }
-
 }
 
 class TaskListCubit extends Cubit<TaskList> {
-
   final TaskListDataProvider dataProvider = TaskListDataProvider();
 
   TaskListCubit() : super(TaskList(loaded: false)) {
@@ -69,11 +68,9 @@ class ToggleTask extends TaskListEvent {
 }
 
 class TaskListBloc extends Bloc<TaskListEvent, TaskList> {
-
   final TaskListDataProvider dataProvider = TaskListDataProvider();
-  
-  TaskListBloc() : super(TaskList(loaded: false)) {
 
+  TaskListBloc() : super(TaskList(loaded: false)) {
     on<LoadTasks>((event, emit) async {
       await dataProvider.getTaskListString().then((value) {
         emit(value);
@@ -90,9 +87,7 @@ class TaskListBloc extends Bloc<TaskListEvent, TaskList> {
     });
 
     add(LoadTasks());
-    
   }
-  
 }
 
 class LoggingBlocObserver extends BlocObserver {
@@ -117,7 +112,8 @@ class TaskList {
   bool loaded;
 
   TaskList({this.tasks = const [], this.loaded = true});
-  factory TaskList.fromJson(Map<String, dynamic> json) => _$TaskListFromJson(json);
+  factory TaskList.fromJson(Map<String, dynamic> json) =>
+      _$TaskListFromJson(json);
   Map<String, dynamic> toJson() => _$TaskListToJson(this);
 
   @override
@@ -126,7 +122,9 @@ class TaskList {
   }
 
   TaskList toggle(Task task) {
-    return TaskList(tasks: tasks.map((t) => t == task ? (t..toggle()) : t).toList());
+    return TaskList(
+      tasks: tasks.map((t) => t == task ? (t..toggle()) : t).toList(),
+    );
   }
 }
 
@@ -137,7 +135,12 @@ class Task {
   final String subtitle;
   bool completed;
 
-  Task({required this.id, required this.title, required this.subtitle, this.completed = false});
+  Task({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    this.completed = false,
+  });
   factory Task.fromJson(Map<String, dynamic> json) => _$TaskFromJson(json);
   Map<String, dynamic> toJson() => _$TaskToJson(this);
 
@@ -181,17 +184,25 @@ class ToDoListBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return BlocBuilder<TaskListBloc, TaskList>(
-      builder: (context, taskList) => Padding(padding: EdgeInsets.only(top: 64), child: Center(
-        child: taskList.loaded ? SizedBox(
-          width: 450,
-          child:ListView(
-            children: taskList.tasks.map((task) => TaskTile(task: task)).toList(),
+      builder:
+          (context, taskList) => Padding(
+            padding: EdgeInsets.only(top: 64),
+            child: Center(
+              child:
+                  taskList.loaded
+                      ? SizedBox(
+                        width: 450,
+                        child: ListView(
+                          children:
+                              taskList.tasks
+                                  .map((task) => TaskTile(task: task))
+                                  .toList(),
+                        ),
+                      )
+                      : CircularProgressIndicator(color: Colors.deepOrange),
+            ),
           ),
-        ) : CircularProgressIndicator(color: Colors.deepOrange,),
-
-      ))
     );
   }
 }
@@ -199,10 +210,7 @@ class ToDoListBody extends StatelessWidget {
 class TaskTile extends StatelessWidget {
   final Task task;
 
-  const TaskTile({
-    super.key,
-    required this.task,
-  });
+  const TaskTile({super.key, required this.task});
   @override
   Widget build(BuildContext context) {
     return ListTile(
@@ -214,10 +222,7 @@ class TaskTile extends StatelessWidget {
         ),
         color: Colors.deepOrange,
       ),
-      title: Text(
-        task.title,
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
+      title: Text(task.title, style: Theme.of(context).textTheme.titleMedium),
       subtitle: Text(
         task.subtitle,
         style: Theme.of(context).textTheme.bodyMedium,
